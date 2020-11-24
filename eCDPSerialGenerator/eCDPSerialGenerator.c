@@ -4,6 +4,7 @@
 #include <Windows.h>
 BYTE key[0xA8] = { 0x01,0x0A,0x16,0x04,0x07,0x18,0x0C,0x10,0x05,0x17,0x09,0x03,0x12,0x08,0x15,0x13,0x0B,0x02,0x0F,0x0D,0x11,0x0E,0x06,0x14,0x07,0x0C,0x0E,0x11,0x09,0x16,0x10,0x06,0x14,0x0D,0x01,0x02,0x12,0x08,0x13,0x0B,0x0F,0x0A,0x18,0x15,0x04,0x05,0x03,0x17,0x0F,0x04,0x09,0x03,0x06,0x07,0x11,0x12,0x15,0x16,0x02,0x08,0x05,0x17,0x0C,0x0D,0x01,0x18,0x0B,0x14,0x0E,0x10,0x13,0x0A,0x02,0x0A,0x0E,0x12,0x0B,0x03,0x0C,0x06,0x13,0x07,0x11,0x09,0x15,0x18,0x10,0x17,0x14,0x0F,0x04,0x01,0x05,0x08,0x16,0x0D,0x0B,0x02,0x09,0x16,0x14,0x01,0x12,0x11,0x15,0x06,0x0F,0x17,0x07,0x10,0x0C,0x0E,0x08,0x18,0x13,0x03,0x0A,0x0D,0x04,0x05,0x09,0x0F,0x05,0x0D,0x16,0x15,0x12,0x11,0x03,0x0A,0x04,0x10,0x0E,0x14,0x02,0x01,0x13,0x0C,0x06,0x0B,0x17,0x18,0x07,0x08,0x12,0x02,0x0C,0x09,0x0D,0x0E,0x04,0x07,0x16,0x14,0x17,0x01,0x11,0x03,0x10,0x15,0x08,0x0A,0x05,0x13,0x0B,0x18,0x0F,0x06 };
 char* hex_values = "0123456789ABCDEF";
+char* password_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 unsigned short output_vals[6];
 
 void substitute(char* input, char* output, int multiply_by)
@@ -22,11 +23,12 @@ void substitute(char* input, char* output, int multiply_by)
 
 int the_crazy_math_part(unsigned int val1, unsigned int val2)
 {
-    int c = 1;
+    int c = 0;
     
     long long r1 = 0xFFFFFFF9;
     long long r0 = val1;
     long long r3 = val2;
+
 
     // yes this is just the asm implemented in C, dont @ me
     
@@ -54,33 +56,36 @@ int the_crazy_math_part(unsigned int val1, unsigned int val2)
     return r3;
 }
 
-byte* ascii_to_byte(byte* enc, byte* input)
+
+char* ascii_to_byte(char* enc, char* input)
+
 {
     int i;
     int ii;
-    byte* iii;
-    byte c;
+    char* iii;
+    char c;
 
     c = *enc;
     i = 0;
     while (1) {
-        if (c == 0) {
-            return (byte*)0x0;
+        if (c == '\0') {
+            return (char*)0x0;
         }
         ii = 0;
         iii = enc + i;
-        while ((c = input[ii], c != 0 && (*iii == c))) {
+        while (c = input[ii], c != '\0' && (*iii == c)) {
             iii = iii + 1;
             ii = ii + 1;
         }
-        if (c == 0) break;
+        if (c == '\0') break;
         i = i + 1;
         c = enc[i];
     }
     return enc + i;
 }
 
-int idontunderstandthispartyet(char* system_in, unsigned int maccasId)
+
+int find_multiplier(char* system_in, unsigned int maccasId)
 {
     int system_in_len;
     byte* next_var;
@@ -140,6 +145,48 @@ int idontunderstandthispartyet(char* system_in, unsigned int maccasId)
     return 0;
 }
 
+unsigned int hex_to_bytes(char* input, int iterator, int multiplier)
+{
+    byte* iteration;
+    byte* final_char;
+    int result;
+    int i;
+    char* current_char;
+    char* enc = hex_values;
+    result = 0;
+    i = 0;
+    current_char = input + iterator;
+    int ii = 0xc;
+    do {
+        char curChar[2];
+        memset(curChar, 0x00, 2);
+        curChar[0] = current_char[0];
+
+        iteration = ascii_to_byte(enc, curChar);
+        final_char = iteration + -(int)enc;
+        if (iteration == (char*)0x0) {
+            final_char = (char*)0x0;
+        }
+        i = i + 1;
+        result = result + ((int)final_char << (ii & 0xff));
+        ii = ii - 4 & 0xffff;
+        current_char = current_char + 1;
+    } while (i < 4);
+    return result & 0xffff;
+}
+
+void generate_password(unsigned short* input, char* output)
+{
+    int i;
+    i = 0;
+    do {
+        output[i] = password_chars[input[i] - 1];
+        i = i + 1;
+    } while (i < 6);
+    output[i] = '\0';
+    return;
+}
+
 int main()
 {
     char maccas_id[7];
@@ -147,6 +194,7 @@ int main()
     char mac_address[18];
     char formatted[64];
     char encoded[64];
+    char temp_key[100];
     char final_key[100];
     char total_output [64];
     printf("eCDP Serial Number Generator (By SilicaAndPina)\n");
@@ -162,8 +210,49 @@ int main()
     snprintf(formatted, 64, "%s%s%s", mac_address, maccas_id, mannager_id);
     printf("Formatted Data: %s\n", formatted);
 
-    int multiplier = idontunderstandthispartyet(formatted, (unsigned int)maccas_id);
+    int multiplier = find_multiplier(formatted, (unsigned int)maccas_id);
     printf("Multiplier: %x\n", multiplier);
     substitute(formatted, encoded, multiplier);
     printf("Encoded Data: %s\n", encoded);
+
+    unsigned short password_values[6];
+    memset(password_values, 0x00, 6 * 2);
+    int iterator = 0;
+    int i = 0;
+    int ii = 0;
+    do {
+        int chr = hex_to_bytes(encoded, iterator, multiplier);
+        i = ii + 1;
+        password_values[ii] = (unsigned short)chr;
+        iterator = iterator + 4;
+        ii = i;
+    } while (i < 6);
+    
+    printf("Password Values 1: ");
+    for (int i = 0; i < 6; i++)
+    {
+        printf("%x ", password_values[i]);
+    }
+    printf("\n");
+    int magic_number = 0x3E0F83E1;
+
+    ii = 0;
+    do {
+        short chr = password_values[ii];
+        iterator = ii + 1;
+        password_values[ii] = chr + (short)(int)((long long)magic_number * (long long)(int)(unsigned int)chr >> 0x23) * -0x21 + 1;
+        ii = iterator;
+    } while (iterator < 6);
+    
+    printf("Password Values 2: ");
+    for (int i = 0; i < 6; i++)
+    {
+        printf("%x ", password_values[i]);
+    }
+    printf("\n");
+    generate_password(password_values, final_key);
+    printf("Ronald McDonald Says your password is %s\n", final_key);
+
+    printf("\n\nThou hast been reversed!");
+    while (1) {};
 }

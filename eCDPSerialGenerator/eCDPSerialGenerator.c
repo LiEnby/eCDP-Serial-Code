@@ -21,10 +21,10 @@ void substitute(char* input, char* output, int multiply_by)
     output[0x18] = 0;
 }
 
-int the_crazy_math_part(unsigned int val1, unsigned int val2)
+int the_crazy_math_part(unsigned int val1, unsigned int val2, int carry)
 {
-    int c = 0;
-    
+    int c = carry;
+
     long long r1 = 0xFFFFFFF9;
     long long r0 = val1;
     long long r3 = val2;
@@ -57,8 +57,7 @@ int the_crazy_math_part(unsigned int val1, unsigned int val2)
 }
 
 
-char* ascii_to_byte(char* enc, char* input)
-
+char* find_pattern(char* enc, char* input)
 {
     int i;
     int ii;
@@ -87,35 +86,25 @@ char* ascii_to_byte(char* enc, char* input)
 
 int find_multiplier(char* system_in, unsigned int maccasId)
 {
-    int system_in_len;
-    byte* next_var;
-    byte* this_char;
-    byte* extraout_r1;
     unsigned int total_iterations;
     int i = 0;
     int ii = 0;
-    byte* system_in_2;
-    unsigned int c;
-    char* starting_inc;
 
     total_iterations = 0;
-    c = maccasId & 0xffff00ff;
-    system_in_len = strlen(system_in);
-    starting_inc = hex_values;
-    system_in_2 = (byte*)system_in;
+    unsigned int c = maccasId & 0xffff00ff;
+    int system_in_len = strlen(system_in);
+    char* hex_values_ptr = hex_values;
     if (0 < system_in_len) {
         do {
-            system_in_2 = system_in_2 + 1;
-            c = c & 0xffffff00 | (unsigned int)*system_in_2;
-            next_var = ascii_to_byte((byte*)starting_inc, (byte*)&c);
-            this_char = next_var + -(int)starting_inc;
-            if (next_var == (byte*)0x0) {
+            system_in++;
+            c = c & 0xffffff00 | (unsigned int)*system_in;
+            byte* next_ptr = next_ptr = find_pattern(hex_values_ptr, (char*)&c);
+            byte* this_char = next_ptr + -(int)hex_values_ptr;
+            if (next_ptr == (byte*)0x0) {
                 this_char = (byte*)0x0;
             }
             i = i + 1;
             total_iterations = (unsigned int)(this_char + total_iterations);
-            system_in_len = strlen(system_in);
-            system_in_2 = system_in_2;
         } while (i < system_in_len);
     }
 
@@ -124,23 +113,38 @@ int find_multiplier(char* system_in, unsigned int maccasId)
     int ret;
     unsigned int offset = 7;
 
-    if (offset <= total_iterations) {
+    if (offset <= total_iterations)
+    {
+        int c = 0;
         i = 0x1c;
-        ii = total_iterations >> 4;
-        if ((int)offset <= (int)(total_iterations >> 0x10)) {
-            i = 0xc;
-            ii = total_iterations >> 0x14;
+        unsigned int r3 = total_iterations >> 4;
+        if (offset <= r3 >> 0xC)
+        {
+            i -= 0x10;
+            r3 <<= 0x10;
         }
-        if ((int)offset <= (int)(ii >> 4)) {
-            i = i - 8;
-            ii = ii >> 8;
+        if (offset <= r3 >> 0x10)
+        {
+            i -= 0x8;
+            r3 <<= 0x8;
         }
-        if ((int)offset <= (int)ii) {
-            i = i - 4;
-            ii = ii >> 4;
+        if (offset <= r3)
+        {
+            i -= 0x4;
+            r3 <<= 0x4;
         }
 
-        return the_crazy_math_part((total_iterations << (i & 0xff)) * 2, ii);
+        unsigned int r0 = total_iterations << (i & 0xFF);
+
+        i = i + i * 2;
+
+        c = ((long long int)r0 * 2) > 0xFFFFFFFF;
+        r0 = r0 * 2;
+
+        printf("Starting Carry: %x\n", c);
+
+
+        return the_crazy_math_part(r0, r3, c);
     }
     return 0;
 }
@@ -162,7 +166,7 @@ unsigned int hex_to_bytes(char* input, int iterator, int multiplier)
         memset(curChar, 0x00, 2);
         curChar[0] = current_char[0];
 
-        iteration = ascii_to_byte(enc, curChar);
+        iteration = find_pattern(enc, curChar);
         final_char = iteration + -(int)enc;
         if (iteration == (char*)0x0) {
             final_char = (char*)0x0;
@@ -189,37 +193,48 @@ void generate_password(unsigned short* input, char* output)
 
 int main()
 {
-    char maccas_id[7];
-    char mannager_id[7];
-    char mac_address[18];
+    char maccas_id[64];
+    char mannager_id[64];
+    char mac_address[64];
     char formatted[64];
     char encoded[64];
     char temp_key[100];
     char final_key[100];
     char total_output [64];
+    int iterator = 0;
+    int i = 0;
+    int ii = 0;
+
     printf("eCDP Serial Number Generator (By SilicaAndPina)\n");
     printf("-- A backdoor on the worlds rarest DS game.\n");
+    entry:
+    
     printf("Enter your NDS's Mac Address (without any seperators): ");
-    gets_s(mac_address, 18);
-    printf("Enter McDonalds Store Id (first 6 digit entry): ");
-    gets_s(maccas_id,7);
-    printf("Enter McDonalds Manager Id (second 6 digit entry): ");
-    gets_s(mannager_id, 7);
+    gets_s(mac_address, 64);
+    if (strlen(mac_address) != 12)
+        goto entry;
 
+
+    printf("Enter McDonalds Store Id (first 6 digit entry): ");
+    gets_s(maccas_id,64);
+    if (strlen(maccas_id) != 6)
+        goto entry;
+
+
+    printf("Enter McDonalds Manager Id (second 6 digit entry): ");
+    gets_s(mannager_id, 64);
+    if (strlen(mannager_id) != 6)
+        goto entry;
 
     snprintf(formatted, 64, "%s%s%s", mac_address, maccas_id, mannager_id);
     printf("Formatted Data: %s\n", formatted);
-
     int multiplier = find_multiplier(formatted, (unsigned int)maccas_id);
     printf("Multiplier: %x\n", multiplier);
     substitute(formatted, encoded, multiplier);
     printf("Encoded Data: %s\n", encoded);
-
     unsigned short password_values[6];
     memset(password_values, 0x00, 6 * 2);
-    int iterator = 0;
-    int i = 0;
-    int ii = 0;
+
     do {
         int chr = hex_to_bytes(encoded, iterator, multiplier);
         i = ii + 1;
@@ -227,23 +242,21 @@ int main()
         iterator = iterator + 4;
         ii = i;
     } while (i < 6);
-    
+
     printf("Password Values 1: ");
     for (int i = 0; i < 6; i++)
     {
         printf("%x ", password_values[i]);
     }
     printf("\n");
-    int magic_number = 0x3E0F83E1;
-
+    i = 0; 
     ii = 0;
-    do {
-        short chr = password_values[ii];
-        iterator = ii + 1;
-        password_values[ii] = chr + (short)(int)((long long)magic_number * (long long)(int)(unsigned int)chr >> 0x23) * -0x21 + 1;
-        ii = iterator;
-    } while (iterator < 6);
-    
+    do
+    {
+        i = ii;
+        int chr = password_values[ii++];
+        password_values[i] = chr % 33 + 1;
+    } while (ii < 6);
     printf("Password Values 2: ");
     for (int i = 0; i < 6; i++)
     {
@@ -251,7 +264,8 @@ int main()
     }
     printf("\n");
     generate_password(password_values, final_key);
-    printf("Ronald McDonald Says your password is %s\n", final_key);
+    printf("Ronald McDonald Says your password is %s", final_key);
+
 
     printf("\n\nThou hast been reversed!");
     while (1) {};

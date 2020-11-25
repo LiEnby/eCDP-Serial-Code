@@ -193,14 +193,14 @@ int main()
     char mac_address[64];
     char formatted[64];
     char encoded[64];
-    char temp_key[100];
     char final_key[100];
     char total_output [64];
     int iterator = 0;
     int i = 0;
     int ii = 0;
 
-    printf("eCDP Serial Number Generator (By SilicaAndPina)\n");
+    printf("eCDP Serial Number Generator\n");
+    printf("Credits: SilicaAndPina (Reversing, writing code), Rufis_ (ARM asm help)\n");
     printf("-- A backdoor on the worlds rarest DS game.\n");
     entry:
     

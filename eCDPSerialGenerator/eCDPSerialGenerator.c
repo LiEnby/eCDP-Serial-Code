@@ -21,7 +21,7 @@ void substitute(char* input, char* output, int multiply_by)
     output[0x18] = 0;
 }
 
-int the_crazy_math_part(unsigned int val1, unsigned int val2, int carry)
+int the_crazy_math_part(unsigned int val1, unsigned int val2, int carry, int start_at)
 {
     int c = carry;
 
@@ -32,7 +32,7 @@ int the_crazy_math_part(unsigned int val1, unsigned int val2, int carry)
 
     // yes this is just the asm implemented in C, dont @ me
     
-    for (int i = 0; i < 4; i++)
+    for (int i = start_at; i < 0x20; i++)
     {
         // adcs r3,r1,r3,lsl 1h
         r3 = (r1 + (r3 << 1)) + c; //same as r3 = (r3+(r1 * 2)) + c;
@@ -62,81 +62,76 @@ char* find_pattern(char* enc, char* input)
     int i;
     int ii;
     char* iii;
-    char c;
 
-    c = *enc;
     i = 0;
-    while (1) {
-        if (c == '\0') {
-            return (char*)0x0;
-        }
+    if (!*enc)
+        return 0;
+    while (1)
+    {
         ii = 0;
-        iii = enc + i;
-        while (c = input[ii], c != '\0' && (*iii == c)) {
-            iii = iii + 1;
-            ii = ii + 1;
+        iii = &enc[i];
+        while (input[ii] && *iii == input[ii])
+        {
+            ++iii;
+            ++ii;
         }
-        if (c == '\0') break;
-        i = i + 1;
-        c = enc[i];
+        if (!input[ii])
+            break;
+        if (!enc[++i])
+            return 0;
     }
-    return enc + i;
+    return &enc[i];
 }
 
 
-int find_multiplier(char* system_in, unsigned int maccasId)
+int find_multiplier(char* system_in)
 {
-    unsigned int total_iterations;
-    int i = 0;
+    int total_iterations = 0;
     int ii = 0;
-
-    total_iterations = 0;
-    unsigned int c = maccasId & 0xffff00ff;
-    int system_in_len = strlen(system_in);
+    int next_var = 0;
+   
+    char* system_in_base_ptr = system_in;
     char* hex_values_ptr = hex_values;
-    if (0 < system_in_len) {
-        do {
-            system_in++;
-            c = c & 0xffffff00 | (unsigned int)*system_in;
-            byte* next_ptr = next_ptr = find_pattern(hex_values_ptr, (char*)&c);
-            byte* this_char = next_ptr + -(int)hex_values_ptr;
-            if (next_ptr == (byte*)0x0) {
-                this_char = (byte*)0x0;
-            }
-            i = i + 1;
-            total_iterations = (unsigned int)(this_char + total_iterations);
-        } while (i < system_in_len);
-    }
+    for (int i = 0; i < strlen(system_in_base_ptr); i++)
+    {
+        char c = *system_in++;
+        char characters[2];
+        memset(characters, 0, 2);
+        characters[0] = c;
 
+        char* a2b = find_pattern(hex_values_ptr, characters);
+        next_var = a2b - (uintptr_t)hex_values_ptr;
+        if (!a2b)
+            next_var = 0;
+        total_iterations += next_var;
+    }
     // step 2
 
-    int ret;
     unsigned int offset = 7;
 
     if (offset <= total_iterations)
     {
         int c = 0;
-        i = 0x1c;
+        int start_at = 0x1c;
         unsigned int r3 = total_iterations >> 4;
         if (offset <= r3 >> 0xC)
         {
-            i -= 0x10;
-            r3 <<= 0x10;
+            start_at -= 0x10;
+            r3 >>= 0x10;
         }
         if (offset <= r3 >> 0x10)
         {
-            i -= 0x8;
-            r3 <<= 0x8;
+            start_at -= 0x8;
+            r3 >>= 0x8;
         }
         if (offset <= r3)
         {
-            i -= 0x4;
-            r3 <<= 0x4;
+            start_at -= 0x4;
+            r3 >>= 0x4;
         }
 
-        unsigned int r0 = total_iterations << (i & 0xFF);
+        unsigned int r0 = total_iterations << (start_at & 0xFF);
 
-        i = i + i * 2;
 
         c = ((long long int)r0 * 2) > 0xFFFFFFFF;
         r0 = r0 * 2;
@@ -144,12 +139,12 @@ int find_multiplier(char* system_in, unsigned int maccasId)
         printf("Starting Carry: %x\n", c);
 
 
-        return the_crazy_math_part(r0, r3, c);
+        return the_crazy_math_part(r0, r3, c, start_at);
     }
     return 0;
 }
 
-unsigned int hex_to_bytes(char* input, int iterator, int multiplier)
+unsigned int hex_to_bytes(char* input, int iterator)
 {
     byte* iteration;
     byte* final_char;
@@ -228,7 +223,7 @@ int main()
 
     snprintf(formatted, 64, "%s%s%s", mac_address, maccas_id, mannager_id);
     printf("Formatted Data: %s\n", formatted);
-    int multiplier = find_multiplier(formatted, (unsigned int)maccas_id);
+    int multiplier = find_multiplier(formatted);
     printf("Multiplier: %x\n", multiplier);
     substitute(formatted, encoded, multiplier);
     printf("Encoded Data: %s\n", encoded);
@@ -236,7 +231,7 @@ int main()
     memset(password_values, 0x00, 6 * 2);
 
     do {
-        int chr = hex_to_bytes(encoded, iterator, multiplier);
+        int chr = hex_to_bytes(encoded, iterator);
         i = ii + 1;
         password_values[ii] = (unsigned short)chr;
         iterator = iterator + 4;

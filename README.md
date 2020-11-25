@@ -1,2 +1,2 @@
 # eCDP-Serial-Code
-Generates "Serial Code" for eCDP DS game.
+Generates "Serial Code" for the rarest DS Game ever; eCDP ! 

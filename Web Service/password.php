@@ -13,7 +13,7 @@
 		
 		$management = $_GET['management'];
 		$store = $_GET['store'];
-		if((strlen($full_mac) == 12 && preg_match("/[A-F0-9]/",$full_mac)) && (strlen($management) == 6 && preg_match("/[0-9]/",$management)) && (strlen($store) == 6 && preg_match("/[0-9]/",$store)))
+		if((strlen($full_mac) == 12 && preg_match_all ("/^[A-F0-9]*$/",$full_mac)) && (strlen($management) == 6 && preg_match_all ("/^[0-9]*$/",$management)) && (strlen($store) == 6 && preg_match_all ("/^[0-9]*$/",$store)))
 		{
 			echo(exec("./eCDPSerialGenerator.elf ".escapeshellarg($full_mac)." ".escapeshellarg($store)." ".escapeshellarg($management)));
 			exit();

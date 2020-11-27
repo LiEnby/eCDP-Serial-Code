@@ -254,6 +254,6 @@ int main(int argc, char* argv[])
     printf("Ronald McDonald Says your password is %s", final_key);
 
 
-    printf("\n\nThou hast been reversed!");
-    while (1) {};
+    printf("\n\nThou hast been reversed!\n");
+    getchar();
 }

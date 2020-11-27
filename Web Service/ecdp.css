@@ -1,13 +1,13 @@
 body{
 	background-image: url("bg.gif");
 	background-repeat: repeat;
-    position: relative;
+    text-align:center;
 }
 .keygen{
 	display: inline-block;
-	margin: 10px;
-    top: 50px;
+    top: 15%;
 	
+	position: relative;
 	padding:20px;
 	width:50%;
 	text-align:center;

@@ -5,12 +5,8 @@ body{
 }
 .keygen{
 	display: inline-block;
-	top: 50%;
-	left: 50%;
-    margin: 0;
-    position: absolute;
-	-ms-transform: translate(-50%, -50%);
-    transform: translate(-50%, -50%);
+	margin: 10px;
+    top: 50px;
 	
 	padding:20px;
 	width:50%;

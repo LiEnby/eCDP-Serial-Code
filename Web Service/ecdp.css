@@ -1,0 +1,56 @@
+body{
+	background-image: url("bg.gif");
+	background-repeat: repeat;
+    position: relative;
+}
+.keygen{
+	display: inline-block;
+	top: 50%;
+	left: 50%;
+    margin: 0;
+    position: absolute;
+	-ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+	
+	padding:20px;
+	width:50%;
+	text-align:center;
+	background-color: green;
+	color: white;
+	border-radius: 4px;
+}
+.macAddr{
+	width: 60px;
+	padding: 12px 20px;
+	margin: 8px 0;
+	border-radius: 100%;
+	background-color: black;
+	color:white;
+}
+
+.button{
+	width: 60%;
+	margin-top:50px;
+	padding:12px;
+	border-radius: 4px;
+	background-color: yellow;
+}
+.entry{
+	width: 60%;
+	padding:12px;
+	border-radius: 4px;
+	background-color: black;
+	color:white;
+}
+.leaveOffering{
+	text-align:center;
+	width:100%;
+	padding: 20px;
+	color: white;
+	font-size: 140%;
+	font-weight: bold;
+}
+.askRonald{
+	float:left;
+	padding-right: 3%;
+}

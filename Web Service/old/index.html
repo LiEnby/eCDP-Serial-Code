@@ -1,0 +1,48 @@
+<html>
+	<head>
+		<title> McKeygen - Serial Key Generator for eCDP</title>
+		<meta name="viewport" content="width=device-width, initial-scale=0.2">
+		<link rel="stylesheet" type="text/css" href="ecdp.css">
+	</head>
+	
+	<body>
+		<div class="keygen">
+			<img src="donald.jpg" class="askRonald" width="228" height="406">
+			<div class="leaveOffering"> Leave an offering for Ronald McDonald </div>
+			DSi Mac Address:<br>
+			<input type="text" id="dsiMac0" class="macAddr" value="00" maxlength="2"> :
+			<input type="text" id="dsiMac1" class="macAddr" value="00" maxlength="2"> :
+			<input type="text" id="dsiMac2" class="macAddr" value="00" maxlength="2"> :
+			<input type="text" id="dsiMac3" class="macAddr" value="00" maxlength="2"> :
+			<input type="text" id="dsiMac4" class="macAddr" value="00" maxlength="2"> :
+			<input type="text" id="dsiMac5" class="macAddr" value="00" maxlength="2"><br>
+			Store Number:<br>
+			<input type="text" id="storeId" class="entry" value="000000"  maxlength="6" size="3"><br>
+			Store Management Number of DS Card:<br>
+			<input type="text" id="managementId" class="entry" value="000000" maxlength="6" size="3"><br>
+			<input type="submit" id="generate_password" class="button" value="Place Offering" onclick="placeOffering()"><br>
+			<div id="offering"></div>
+		</div>
+		<script>
+			
+			function placeOffering()
+			{
+				query = "/password.php?mac0="+dsiMac0.value+"&mac1="+dsiMac1.value+"&mac2="+dsiMac2.value+"&mac3="+dsiMac3.value+"&mac4="+dsiMac4.value+"&mac5="+dsiMac5.value+"&store="+storeId.value+"&management="+managementId.value;
+				offering.innerText = "Contacting Ronald McDonald...";
+				xhr = new XMLHttpRequest();
+				xhr.open("GET",query,true);
+				xhr.onreadystatechange = function () {
+				  if(xhr.readyState === XMLHttpRequest.DONE) {
+					var status = xhr.status;
+					if (status === 0 || (status >= 200 && status < 400)) {
+						offering.innerText = "Ronald McDonald speaks with a cryptic message: "+xhr.responseText;
+					} else {
+						offering.innerText = "Ronald McDonald looks at you, disgusted, throwing your BigMac right back at you.";
+					}
+				  }
+				};
+				xhr.send();
+			}
+		</script>
+	</body>
+</html>

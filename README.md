@@ -19,6 +19,7 @@ mine acturally worked like 50% of the time the day before that but im not counti
 
 -- JavaScript 
 
-One of the users on the eCDP Speedrunning discord called "User670" ported the algorithm to JavaScript, 
-so i am now using his version for the Web Interface rather than running my C Code via php exec() like i was doing before 
-its slightly faster, and more secure to do it this way too, so yeah.
+One of the users on the eCDP Speedrunning discord called "User670" ported the algorithm to JavaScript, based on LazyDogP's version
+since python is closer to JS than C is .. so i am now using his version for the Web Interface rather than running my C Code via php exec() 
+like i was doing before, its slightly faster, and more secure to do it this way too since i dont risk someone finding a way to break out of the exec()
+and run arbitary code.. so yeah.

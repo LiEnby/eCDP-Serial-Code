@@ -3,6 +3,10 @@ package de.cruuud.nds;
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.text.ParseException;
 
 public class ECDPPasswordGenerator {
@@ -77,6 +81,7 @@ public class ECDPPasswordGenerator {
         final JFormattedTextField txtPassword = new JFormattedTextField();
         final JLabel lblPassword = new JLabel("Your password: ", JLabel.RIGHT);
         lblPassword.setFont(fontLabel);
+        lblPassword.setToolTipText("Your generated password/serial code");
 
         txtPassword.setEditable(false);
         txtPassword.setFont(font);
@@ -87,6 +92,30 @@ public class ECDPPasswordGenerator {
         final JButton btnGenerate = new JButton("Generate password");
         btnGenerate.setMnemonic('G');
         btnGenerate.setToolTipText("Password would be invalid when both Store and Store Management Number are 000000");
+        btnGenerate.setEnabled(false);
+
+        final JButton btnGenerateMultiple = new JButton("Generate passwords");
+        btnGenerateMultiple.setMnemonic('R');
+        btnGenerateMultiple.setToolTipText("Generate multiple passwords");
+
+        final JCheckBox chkRandomStore = new JCheckBox("Random store numbers");
+        final JCheckBox chkRandomManagement = new JCheckBox("Random management numbers");
+        final JSpinner spinCountPasswords = new JSpinner();
+        final SpinnerNumberModel model = new SpinnerNumberModel(10, 1, 1000, 10);
+        spinCountPasswords.setModel(model);
+        final JLabel lblSpinner = new JLabel("Number of passwords: ");
+        final JPanel pnlSpinner = new JPanel();
+        pnlSpinner.add(lblSpinner);
+        pnlSpinner.add(spinCountPasswords);
+
+        final JPanel pnlGenerator = new JPanel(new BorderLayout());
+        final JPanel pnlCheckBox = new JPanel(new GridLayout(3, 1));
+        pnlCheckBox.add(chkRandomStore);
+        pnlCheckBox.add(chkRandomManagement);
+        pnlCheckBox.add(pnlSpinner);
+        pnlGenerator.add(btnGenerateMultiple, BorderLayout.NORTH);
+        pnlGenerator.add(pnlCheckBox, BorderLayout.WEST);
+
 
         final JPanel pnlFields = new JPanel(new GridLayout(4, 2, 0, 0));
         pnlFields.add(lblMac);
@@ -105,7 +134,13 @@ public class ECDPPasswordGenerator {
 
         final JPanel pnlButton = new JPanel();
         pnlButton.add(btnGenerate);
-        pnlMain.add(pnlButton, BorderLayout.EAST);
+        final JPanel pnlButtons = new JPanel(new BorderLayout());
+
+        pnlButtons.add(pnlButton, BorderLayout.EAST);
+        pnlButtons.add(pnlGenerator, BorderLayout.SOUTH);
+        pnlButtons.setBorder(BorderFactory.createRaisedSoftBevelBorder());
+
+        pnlMain.add(pnlButtons, BorderLayout.CENTER);
 
         final JTextArea txtLogging = new JTextArea("", 16, 64);
         txtLogging.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 8));
@@ -139,6 +174,79 @@ public class ECDPPasswordGenerator {
                 JOptionPane.showMessageDialog(frame, ie.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
+
+        btnGenerateMultiple.addActionListener(e -> {
+            txtLogging.setText("");
+            final ILogger nullLogger = data -> {
+            };
+            for (int i = 0; i < (Integer) spinCountPasswords.getValue(); i++) {
+                int storeNumber = i;
+                int storeManagementNumber = i;
+                if (chkRandomStore.isSelected()) {
+                    storeNumber = (int) (Math.random() * 10000);
+                }
+                if (chkRandomManagement.isSelected()) {
+                    storeManagementNumber = (int) (Math.random() * 10000);
+                }
+                storeNumber %= 10000;
+                storeManagementNumber %= 10000;
+                if (storeNumber == 0 && storeManagementNumber == 0) {
+                    storeNumber++;
+                }
+                final String mac = txtMacAddress.getText().replaceAll("-", "");
+
+                final String txtStore = String.format("%06d", storeNumber);
+                final String txtStoreManagement = String.format("%06d", storeManagementNumber);
+                final String password = ECDP.generatePassword(nullLogger, mac, txtStore, txtStoreManagement);
+                txtLogging.append(String.format("[mac-address=%s][store=%s][store management=%s][password=%s]\n", mac, txtStore, txtStoreManagement, password));
+            }
+        });
+
+        txtStoreNumber.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+        });
+
+        txtStoreManagerNumber.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+        });
+        txtStoreNumber.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+
+            @Override
+            public void focusGained(FocusEvent e) {
+                setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+        });
+        txtStoreManagerNumber.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+
+            @Override
+            public void focusGained(FocusEvent e) {
+                setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+        });
+    }
+
+    private static void setGenerateButtonState(final JButton btnGenerate, final JTextField txtStoreNumber, final JTextField txtStoreManagerNumber) {
+        final String store = txtStoreNumber.getText().trim();
+        final String storeManagement = txtStoreManagerNumber.getText().trim();
+        if (store.equals("000000".substring(0, store.length())) && storeManagement.equals("000000".substring(0, storeManagement.length()))) {
+            btnGenerate.setEnabled(false);
+        } else {
+            btnGenerate.setEnabled(true);
+        }
     }
 }
 

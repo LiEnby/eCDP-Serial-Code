@@ -11,6 +11,8 @@ import java.text.ParseException;
 
 public class ECDPPasswordGenerator {
 
+    public static final int MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1 = 1000000;
+
     public static void main(String[] args) {
         final JFrame frame = new JFrame();
 
@@ -183,13 +185,13 @@ public class ECDPPasswordGenerator {
                 int storeNumber = i;
                 int storeManagementNumber = i;
                 if (chkRandomStore.isSelected()) {
-                    storeNumber = (int) (Math.random() * 10000);
+                    storeNumber = (int) (Math.random() * MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1);
                 }
                 if (chkRandomManagement.isSelected()) {
-                    storeManagementNumber = (int) (Math.random() * 10000);
+                    storeManagementNumber = (int) (Math.random() * MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1);
                 }
-                storeNumber %= 10000;
-                storeManagementNumber %= 10000;
+                storeNumber %= MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1;
+                storeManagementNumber %= MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1;
                 if (storeNumber == 0 && storeManagementNumber == 0) {
                     storeNumber++;
                 }

@@ -142,9 +142,9 @@ public class ECDPTest {
         final List<String> result = new ArrayList<>();
         ILogger logger = data -> result.add(data);
         String mac = "123456789ABC";
-        String password="QQQQQQ";
+        String password = "QQQQQQ";
         ECDP.reverseFromPassword(logger, mac, password, 1, 0);
-        assertEquals(0,result.size(),"No password was expected!");
+        assertEquals(0, result.size(), "No password was expected!");
     }
 
     private void checkReverseTable(String mac, String password, int maxPasswords, int table) {

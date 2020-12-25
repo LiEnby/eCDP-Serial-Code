@@ -98,16 +98,15 @@ public class ECDPPasswordGenerator {
 
         final JButton btnGenerate = new JButton("Generate password");
         btnGenerate.setMnemonic('G');
-        btnGenerate.setToolTipText("Password would be invalid when Store Management Number is 000000");
-        btnGenerate.setEnabled(false);
+        btnGenerate.setToolTipText("Generate a password based on given MAC, store and store management number");
 
         final JButton btnReverse = new JButton("Reverse from password");
         btnReverse.setMnemonic('R');
         btnReverse.setToolTipText("Calculate the Store and Store Management Numbers based on the MAC address and given password (password must be entered!)");
         btnReverse.setEnabled(false);
 
-        final JButton btnGenerateMultiple = new JButton("Generate passwords");
-        btnGenerateMultiple.setMnemonic('P');
+        final JButton btnGenerateMultiple = new JButton("Bulk generate passwords");
+        btnGenerateMultiple.setMnemonic('B');
         btnGenerateMultiple.setToolTipText("Generate multiple passwords");
 
         final JButton btnShowMaster = new JButton("Show masterpassword");
@@ -189,13 +188,10 @@ public class ECDPPasswordGenerator {
                 final String mac = txtMacAddress.getText().replaceAll("-", "");
                 final String store = txtStoreNumber.getText();
                 final String storeManagement = txtStoreManagerNumber.getText();
-                if (storeManagement.equals("000000")) {
-                    txtPassword.setText("");
-                } else {
-                    String password = ECDP.generatePassword(logger, mac, store, storeManagement);
-                    txtPassword.setText(password);
-                }
+                String password = ECDP.generatePassword(logger, mac, store, storeManagement);
+                txtPassword.setText(password);
                 txtMacAddress.setText(txtMacAddress.getText().toUpperCase());
+                btnReverse.setEnabled(true);
             } catch (IllegalArgumentException ie) {
                 JOptionPane.showMessageDialog(frame, ie.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
             }
@@ -231,11 +227,8 @@ public class ECDPPasswordGenerator {
                 }
                 storeNumber %= MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1;
                 storeManagementNumber %= MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1;
-                //Store management number may not be 0 (eCDP does not accept that)
-                if (storeManagementNumber == 0) {
-                    storeManagementNumber++;
-                }
                 final String mac = txtMacAddress.getText().replaceAll("-", "");
+                txtMacAddress.setText(txtMacAddress.getText().toUpperCase());
 
                 final String txtStore = String.format("%06d", storeNumber);
                 final String txtStoreManagement = String.format("%06d", storeManagementNumber);
@@ -302,7 +295,7 @@ public class ECDPPasswordGenerator {
     private static void setGenerateButtonState(final JButton btnGenerate, final JTextField txtStoreNumber, final JTextField txtStoreManagerNumber) {
         final String store = txtStoreNumber.getText().trim();
         final String storeManagement = txtStoreManagerNumber.getText().trim();
-        if (store.equals("000000".substring(0, store.length())) && storeManagement.equals("000000".substring(0, storeManagement.length()))) {
+        if (store.length() < 6 || storeManagement.length() < 6) {
             btnGenerate.setEnabled(false);
         } else {
             btnGenerate.setEnabled(true);

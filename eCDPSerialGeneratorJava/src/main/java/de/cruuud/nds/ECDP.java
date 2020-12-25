@@ -67,7 +67,11 @@ public class ECDP {
             {0x12, 0x02, 0x0C, 0x09, 0x0D, 0x0E, 0x04, 0x07, 0x16, 0x14, 0x17, 0x01, 0x11, 0x03, 0x10, 0x15, 0x08, 0x0A, 0x05, 0x13, 0x0B, 0x18, 0x0F, 0x06}
     };
 
-    private static final String PASSWORD_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    public static final String MASTER_PASSWORD = "0QKDE9";
+
+    public static final String PASSWORD_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    public static final ILogger NULL_LOGGER = data -> {
+    };
 
     public static String generatePassword(final ILogger logger, final String macAddress, final String storeNumber, final String storeManagementNumber) {
         if (macAddress == null || !macAddress.toUpperCase().matches("[0123456789ABCDEF]{12}")) {
@@ -149,5 +153,843 @@ public class ECDP {
         logger.logString("");
         logger.logString("  PASSWORD = " + result.toString());
         return result.toString();
+    }
+
+    public static long reverseFromPassword(final ILogger logger, final String mac, final String password, long maxPasswords, int forceTable) {
+        if (logger == null || mac == null || password == null || password.length() != 6) {
+            return 0;
+        }
+        //Calculate the expected remainders
+        int expectedPasswordPartModulos[] = new int[6];
+        for (int i = 0; i < password.length(); i++) {
+            expectedPasswordPartModulos[i] = PASSWORD_ALPHABET.indexOf(password.toUpperCase().charAt(i));
+            if (expectedPasswordPartModulos[i] < 0) {
+                return 0;
+            }
+        }
+        //Prefill the 7 tables with MAC address
+        byte prefilledTables[][] = new byte[7][24];
+        for (int table = 0; table < 7; table++) {
+            for (int tableItem = 0; tableItem < 24; tableItem++) {
+                int idx = SHUFFLE_LUT[table][tableItem] - 1;
+                //Is it character from MAC?
+                if (idx <= 11) {
+                    prefilledTables[table][tableItem] = (byte) Integer.parseInt("" + mac.charAt(idx), 16);
+                } else {
+                    prefilledTables[table][tableItem] = (byte) 0xFF;
+                }
+            }
+        }
+        long currentCount = 0;
+
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 1)) {
+            currentCount = tryTable1(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 2)) {
+            currentCount = tryTable2(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 3)) {
+            currentCount = tryTable3(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 4)) {
+            currentCount = tryTable4(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 5)) {
+            currentCount = tryTable5(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 6)) {
+            currentCount = tryTable6(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        if (currentCount < maxPasswords && (forceTable == 0 || forceTable == 7)) {
+            currentCount = tryTable7(logger, mac, password, prefilledTables, expectedPasswordPartModulos, maxPasswords, currentCount);
+        }
+        return currentCount;
+    }
+
+    public static long tryTable1(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 0;
+        for (int p1 = 0; p1 < 10; p1++) {
+            int startIndex = 0;
+            prefilledTables[table][2] = (byte) p1;
+            int sum = prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex];
+            if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                for (int p2 = 0; p2 < 10; p2++) {
+                    for (int p3 = 0; p3 < 10; p3++) {
+                        startIndex = 4;
+                        prefilledTables[table][5] = (byte) p2;
+                        prefilledTables[table][7] = (byte) p3;
+                        sum = prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex];
+                        if ((sum % 33) == expectedPasswordPartModulos[1]) {
+                            for (int p4 = 0; p4 < 10; p4++) {
+                                startIndex = 8;
+                                prefilledTables[table][9] = (byte) p4;
+                                sum = prefilledTables[table][startIndex++];
+                                sum <<= 4;
+                                sum += prefilledTables[table][startIndex++];
+                                sum <<= 4;
+                                sum += prefilledTables[table][startIndex++];
+                                sum <<= 4;
+                                sum += prefilledTables[table][startIndex];
+                                if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                    for (int p5 = 0; p5 < 10; p5++) {
+                                        for (int p6 = 0; p6 < 10; p6++) {
+                                            for (int p7 = 0; p7 < 10; p7++) {
+                                                startIndex = 12;
+                                                prefilledTables[table][12] = (byte) p5;
+                                                prefilledTables[table][14] = (byte) p6;
+                                                prefilledTables[table][15] = (byte) p7;
+                                                sum = prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex];
+                                                if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                    for (int p8 = 0; p8 < 10; p8++) {
+                                                        for (int p9 = 0; p9 < 10; p9++) {
+                                                            startIndex = 16;
+                                                            prefilledTables[table][18] = (byte) p8;
+                                                            prefilledTables[table][19] = (byte) p9;
+                                                            sum = prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex];
+                                                            if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                for (int p10 = 0; p10 < 10; p10++) {
+                                                                    for (int p11 = 0; p11 < 10; p11++) {
+                                                                        for (int p12 = 0; p12 < 10; p12++) {
+                                                                            startIndex = 20;
+                                                                            prefilledTables[table][20] = (byte) p10;
+                                                                            prefilledTables[table][21] = (byte) p11;
+                                                                            prefilledTables[table][23] = (byte) p12;
+                                                                            sum = prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex];
+                                                                            //Found a possible correct table, matching the password and filled in
+                                                                            //with valid store and store management numbers! Still need to check if the LUT index is still valid though!
+                                                                            if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                                logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                                currentCountPasswords++;
+                                                                                if (currentCountPasswords >= maxPasswords) {
+                                                                                    return maxPasswords;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    public static long tryTable2(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 1;
+        for (int p1 = 0; p1 < 10; p1++) {
+            for (int p2 = 0; p2 < 10; p2++) {
+                int startIndex = 0;
+                prefilledTables[table][2] = (byte) p1;
+                prefilledTables[table][3] = (byte) p2;
+                int sum = prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex];
+                if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                    for (int p3 = 0; p3 < 10; p3++) {
+                        for (int p4 = 0; p4 < 10; p4++) {
+                            startIndex = 4;
+                            prefilledTables[table][5] = (byte) p3;
+                            prefilledTables[table][6] = (byte) p4;
+                            sum = prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex];
+                            if ((sum % 33) == expectedPasswordPartModulos[1]) {
+                                for (int p5 = 0; p5 < 10; p5++) {
+                                    for (int p6 = 0; p6 < 10; p6++) {
+                                        startIndex = 8;
+                                        prefilledTables[table][8] = (byte) p5;
+                                        prefilledTables[table][9] = (byte) p6;
+                                        sum = prefilledTables[table][startIndex++];
+                                        sum <<= 4;
+                                        sum += prefilledTables[table][startIndex++];
+                                        sum <<= 4;
+                                        sum += prefilledTables[table][startIndex++];
+                                        sum <<= 4;
+                                        sum += prefilledTables[table][startIndex];
+                                        if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                            for (int p7 = 0; p7 < 10; p7++) {
+                                                for (int p8 = 0; p8 < 10; p8++) {
+                                                    startIndex = 12;
+                                                    prefilledTables[table][12] = (byte) p7;
+                                                    prefilledTables[table][14] = (byte) p8;
+                                                    sum = prefilledTables[table][startIndex++];
+                                                    sum <<= 4;
+                                                    sum += prefilledTables[table][startIndex++];
+                                                    sum <<= 4;
+                                                    sum += prefilledTables[table][startIndex++];
+                                                    sum <<= 4;
+                                                    sum += prefilledTables[table][startIndex];
+                                                    if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                        for (int p9 = 0; p9 < 10; p9++) {
+                                                            for (int p10 = 0; p10 < 10; p10++) {
+                                                                for (int p11 = 0; p11 < 10; p11++) {
+                                                                    startIndex = 16;
+                                                                    prefilledTables[table][16] = (byte) p9;
+                                                                    prefilledTables[table][18] = (byte) p10;
+                                                                    prefilledTables[table][19] = (byte) p11;
+                                                                    sum = prefilledTables[table][startIndex++];
+                                                                    sum <<= 4;
+                                                                    sum += prefilledTables[table][startIndex++];
+                                                                    sum <<= 4;
+                                                                    sum += prefilledTables[table][startIndex++];
+                                                                    sum <<= 4;
+                                                                    sum += prefilledTables[table][startIndex];
+                                                                    if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                        for (int p12 = 0; p12 < 10; p12++) {
+                                                                            startIndex = 20;
+                                                                            prefilledTables[table][23] = (byte) p12;
+                                                                            sum = prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex];
+                                                                            //Found a possible correct table, matching the password and filled in
+                                                                            //with valid store and store management numbers! Still need to check if the LUT index is still valid though!
+                                                                            if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                                logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                                currentCountPasswords++;
+                                                                                if (currentCountPasswords >= maxPasswords) {
+                                                                                    return maxPasswords;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    public static long tryTable3(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 2;
+        for (int p1 = 0; p1 < 10; p1++) {
+            int startIndex = 0;
+            prefilledTables[table][0] = (byte) p1;
+            int sum = prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex];
+            if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                for (int p3 = 0; p3 < 10; p3++) {
+                    for (int p4 = 0; p4 < 10; p4++) {
+                        startIndex = 4;
+                        prefilledTables[table][6] = (byte) p3;
+                        prefilledTables[table][7] = (byte) p4;
+                        sum = prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex];
+                        if ((sum % 33) == expectedPasswordPartModulos[1]) {
+                            for (int p5 = 0; p5 < 10; p5++) {
+                                for (int p6 = 0; p6 < 10; p6++) {
+                                    startIndex = 8;
+                                    prefilledTables[table][8] = (byte) p5;
+                                    prefilledTables[table][9] = (byte) p6;
+                                    sum = prefilledTables[table][startIndex++];
+                                    sum <<= 4;
+                                    sum += prefilledTables[table][startIndex++];
+                                    sum <<= 4;
+                                    sum += prefilledTables[table][startIndex++];
+                                    sum <<= 4;
+                                    sum += prefilledTables[table][startIndex];
+                                    if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                        for (int p7 = 0; p7 < 10; p7++) {
+                                            for (int p8 = 0; p8 < 10; p8++) {
+                                                startIndex = 12;
+                                                prefilledTables[table][13] = (byte) p7;
+                                                prefilledTables[table][15] = (byte) p8;
+                                                sum = prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex];
+                                                if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                    for (int p9 = 0; p9 < 10; p9++) {
+                                                        for (int p10 = 0; p10 < 10; p10++) {
+                                                            startIndex = 16;
+                                                            prefilledTables[table][17] = (byte) p9;
+                                                            prefilledTables[table][19] = (byte) p10;
+                                                            sum = prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex];
+                                                            if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                for (int p12 = 0; p12 < 10; p12++) {
+                                                                    for (int p13 = 0; p13 < 10; p13++) {
+                                                                        for (int p14 = 0; p14 < 10; p14++) {
+                                                                            startIndex = 20;
+                                                                            prefilledTables[table][20] = (byte) p12;
+                                                                            prefilledTables[table][21] = (byte) p13;
+                                                                            prefilledTables[table][22] = (byte) p14;
+                                                                            sum = prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex];
+                                                                            //Found a possible correct table, matching the password and filled in
+                                                                            //with valid store and store management numbers! Still need to check if the LUT index is still valid though!
+                                                                            if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                                logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                                currentCountPasswords++;
+                                                                                if (currentCountPasswords >= maxPasswords) {
+                                                                                    return maxPasswords;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    public static long tryTable4(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 3;
+
+        int startIndex = 4;
+        int sum = prefilledTables[table][startIndex++];
+        sum <<= 4;
+        sum += prefilledTables[table][startIndex++];
+        sum <<= 4;
+        sum += prefilledTables[table][startIndex++];
+        sum <<= 4;
+        sum += prefilledTables[table][startIndex];
+        //For this table, one part is completely filled with mac address, so if that is already wrong, we can return
+        if (!((sum % 33) == expectedPasswordPartModulos[1])) {
+            return currentCountPasswords;
+        }
+
+        for (int p1 = 0; p1 < 10; p1++) {
+            for (int p2 = 0; p2 < 10; p2++) {
+                startIndex = 0;
+                prefilledTables[table][2] = (byte) p1;
+                prefilledTables[table][3] = (byte) p2;
+                sum = prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex];
+                if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                    for (int p3 = 0; p3 < 10; p3++) {
+                        for (int p4 = 0; p4 < 10; p4++) {
+                            startIndex = 8;
+                            prefilledTables[table][8] = (byte) p3;
+                            prefilledTables[table][10] = (byte) p4;
+                            sum = prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex];
+                            if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                for (int p5 = 0; p5 < 10; p5++) {
+                                    for (int p6 = 0; p6 < 10; p6++) {
+                                        for (int p52 = 0; p52 < 10; p52++) {
+                                            for (int p62 = 0; p62 < 10; p62++) {
+                                                startIndex = 12;
+                                                prefilledTables[table][12] = (byte) p5;
+                                                prefilledTables[table][13] = (byte) p6;
+                                                prefilledTables[table][14] = (byte) p52;
+                                                prefilledTables[table][15] = (byte) p62;
+                                                sum = prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex++];
+                                                sum <<= 4;
+                                                sum += prefilledTables[table][startIndex];
+                                                if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                    for (int p7 = 0; p7 < 10; p7++) {
+                                                        for (int p8 = 0; p8 < 10; p8++) {
+                                                            startIndex = 16;
+                                                            prefilledTables[table][16] = (byte) p7;
+                                                            prefilledTables[table][17] = (byte) p8;
+                                                            sum = prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex++];
+                                                            sum <<= 4;
+                                                            sum += prefilledTables[table][startIndex];
+                                                            if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                for (int p9 = 0; p9 < 10; p9++) {
+                                                                    for (int p10 = 0; p10 < 10; p10++) {
+                                                                        startIndex = 20;
+                                                                        prefilledTables[table][22] = (byte) p9;
+                                                                        prefilledTables[table][23] = (byte) p10;
+                                                                        sum = prefilledTables[table][startIndex++];
+                                                                        sum <<= 4;
+                                                                        sum += prefilledTables[table][startIndex++];
+                                                                        sum <<= 4;
+                                                                        sum += prefilledTables[table][startIndex++];
+                                                                        sum <<= 4;
+                                                                        sum += prefilledTables[table][startIndex];
+                                                                        if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                            logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                            currentCountPasswords++;
+                                                                            if (currentCountPasswords >= maxPasswords) {
+                                                                                return maxPasswords;
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    public static long tryTable5(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 4;
+        for (int p1 = 0; p1 < 10; p1++) {
+            int startIndex = 0;
+            prefilledTables[table][3] = (byte) p1;
+            int sum = prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex];
+            if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                for (int p3 = 0; p3 < 10; p3++) {
+                    for (int p4 = 0; p4 < 10; p4++) {
+                        for (int p42 = 0; p42 < 10; p42++) {
+                            startIndex = 4;
+                            prefilledTables[table][4] = (byte) p3;
+                            prefilledTables[table][6] = (byte) p4;
+                            prefilledTables[table][7] = (byte) p42;
+                            sum = prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex++];
+                            sum <<= 4;
+                            sum += prefilledTables[table][startIndex];
+                            if ((sum % 33) == expectedPasswordPartModulos[1]) {
+                                for (int p5 = 0; p5 < 10; p5++) {
+                                    for (int p6 = 0; p6 < 10; p6++) {
+                                        for (int p62 = 0; p62 < 10; p62++) {
+                                            startIndex = 8;
+                                            prefilledTables[table][8] = (byte) p5;
+                                            prefilledTables[table][10] = (byte) p6;
+                                            prefilledTables[table][11] = (byte) p62;
+                                            sum = prefilledTables[table][startIndex++];
+                                            sum <<= 4;
+                                            sum += prefilledTables[table][startIndex++];
+                                            sum <<= 4;
+                                            sum += prefilledTables[table][startIndex++];
+                                            sum <<= 4;
+                                            sum += prefilledTables[table][startIndex];
+                                            if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                                for (int p7 = 0; p7 < 10; p7++) {
+                                                    for (int p8 = 0; p8 < 10; p8++) {
+                                                        startIndex = 12;
+                                                        prefilledTables[table][13] = (byte) p7;
+                                                        prefilledTables[table][15] = (byte) p8;
+                                                        sum = prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex];
+                                                        if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                            for (int p9 = 0; p9 < 10; p9++) {
+                                                                for (int p10 = 0; p10 < 10; p10++) {
+                                                                    startIndex = 16;
+                                                                    prefilledTables[table][17] = (byte) p9;
+                                                                    prefilledTables[table][18] = (byte) p10;
+                                                                    sum = prefilledTables[table][startIndex++];
+                                                                    sum <<= 4;
+                                                                    sum += prefilledTables[table][startIndex++];
+                                                                    sum <<= 4;
+                                                                    sum += prefilledTables[table][startIndex++];
+                                                                    sum <<= 4;
+                                                                    sum += prefilledTables[table][startIndex];
+                                                                    if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                        for (int p12 = 0; p12 < 10; p12++) {
+                                                                            startIndex = 20;
+                                                                            prefilledTables[table][21] = (byte) p12;
+                                                                            sum = prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex];
+                                                                            //Found a possible correct table, matching the password and filled in
+                                                                            //with valid store and store management numbers! Still need to check if the LUT index is still valid though!
+                                                                            if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                                logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                                currentCountPasswords++;
+                                                                                if (currentCountPasswords >= maxPasswords) {
+                                                                                    return maxPasswords;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    public static long tryTable6(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 5;
+        for (int p1 = 0; p1 < 10; p1++) {
+            for (int p12 = 0; p12 < 10; p12++) {
+                int startIndex = 0;
+                prefilledTables[table][1] = (byte) p1;
+                prefilledTables[table][3] = (byte) p12;
+                int sum = prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex++];
+                sum <<= 4;
+                sum += prefilledTables[table][startIndex];
+                if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                    for (int p3 = 0; p3 < 10; p3++) {
+                        for (int p4 = 0; p4 < 10; p4++) {
+                            for (int p42 = 0; p42 < 10; p42++) {
+                                for (int p43 = 0; p43 < 10; p43++) {
+                                    startIndex = 4;
+                                    prefilledTables[table][4] = (byte) p3;
+                                    prefilledTables[table][5] = (byte) p4;
+                                    prefilledTables[table][6] = (byte) p42;
+                                    prefilledTables[table][7] = (byte) p43;
+                                    sum = prefilledTables[table][startIndex++];
+                                    sum <<= 4;
+                                    sum += prefilledTables[table][startIndex++];
+                                    sum <<= 4;
+                                    sum += prefilledTables[table][startIndex++];
+                                    sum <<= 4;
+                                    sum += prefilledTables[table][startIndex];
+                                    if ((sum % 33) == expectedPasswordPartModulos[1]) {
+                                        for (int p5 = 0; p5 < 10; p5++) {
+                                            startIndex = 8;
+                                            prefilledTables[table][11] = (byte) p5;
+                                            sum = prefilledTables[table][startIndex++];
+                                            sum <<= 4;
+                                            sum += prefilledTables[table][startIndex++];
+                                            sum <<= 4;
+                                            sum += prefilledTables[table][startIndex++];
+                                            sum <<= 4;
+                                            sum += prefilledTables[table][startIndex];
+                                            if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                                for (int p7 = 0; p7 < 10; p7++) {
+                                                    for (int p8 = 0; p8 < 10; p8++) {
+                                                        startIndex = 12;
+                                                        prefilledTables[table][12] = (byte) p7;
+                                                        prefilledTables[table][13] = (byte) p8;
+                                                        sum = prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex];
+                                                        if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                            for (int p9 = 0; p9 < 10; p9++) {
+                                                                startIndex = 16;
+                                                                prefilledTables[table][16] = (byte) p9;
+                                                                sum = prefilledTables[table][startIndex++];
+                                                                sum <<= 4;
+                                                                sum += prefilledTables[table][startIndex++];
+                                                                sum <<= 4;
+                                                                sum += prefilledTables[table][startIndex++];
+                                                                sum <<= 4;
+                                                                sum += prefilledTables[table][startIndex];
+                                                                if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                    for (int p10 = 0; p10 < 10; p10++) {
+                                                                        for (int p102 = 0; p102 < 10; p102++) {
+                                                                            startIndex = 20;
+                                                                            prefilledTables[table][20] = (byte) p10;
+                                                                            prefilledTables[table][21] = (byte) p102;
+                                                                            sum = prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex];
+                                                                            //Found a possible correct table, matching the password and filled in
+                                                                            //with valid store and store management numbers! Still need to check if the LUT index is still valid though!
+                                                                            if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                                logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                                currentCountPasswords++;
+                                                                                if (currentCountPasswords >= maxPasswords) {
+                                                                                    return maxPasswords;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    public static long tryTable7(final ILogger logger, final String mac, final String password, final byte[][] prefilledTables, final int[] expectedPasswordPartModulos, long maxPasswords, long currentCountPasswords) {
+        int table = 6;
+        for (int p1 = 0; p1 < 10; p1++) {
+            int startIndex = 0;
+            prefilledTables[table][0] = (byte) p1;
+            int sum = prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex++];
+            sum <<= 4;
+            sum += prefilledTables[table][startIndex];
+            if ((sum % 33) == expectedPasswordPartModulos[0]) {
+                for (int p3 = 0; p3 < 10; p3++) {
+                    for (int p4 = 0; p4 < 10; p4++) {
+                        startIndex = 4;
+                        prefilledTables[table][4] = (byte) p3;
+                        prefilledTables[table][5] = (byte) p4;
+                        sum = prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex++];
+                        sum <<= 4;
+                        sum += prefilledTables[table][startIndex];
+                        if ((sum % 33) == expectedPasswordPartModulos[1]) {
+                            for (int p5 = 0; p5 < 10; p5++) {
+                                for (int p6 = 0; p6 < 10; p6++) {
+                                    for (int p62 = 0; p62 < 10; p62++) {
+                                        startIndex = 8;
+                                        prefilledTables[table][8] = (byte) p5;
+                                        prefilledTables[table][9] = (byte) p6;
+                                        prefilledTables[table][10] = (byte) p62;
+                                        sum = prefilledTables[table][startIndex++];
+                                        sum <<= 4;
+                                        sum += prefilledTables[table][startIndex++];
+                                        sum <<= 4;
+                                        sum += prefilledTables[table][startIndex++];
+                                        sum <<= 4;
+                                        sum += prefilledTables[table][startIndex];
+                                        if ((sum % 33) == expectedPasswordPartModulos[2]) {
+                                            for (int p7 = 0; p7 < 10; p7++) {
+                                                for (int p8 = 0; p8 < 10; p8++) {
+                                                    for (int p82 = 0; p82 < 10; p82++) {
+                                                        startIndex = 12;
+                                                        prefilledTables[table][12] = (byte) p7;
+                                                        prefilledTables[table][14] = (byte) p8;
+                                                        prefilledTables[table][15] = (byte) p82;
+                                                        sum = prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex++];
+                                                        sum <<= 4;
+                                                        sum += prefilledTables[table][startIndex];
+                                                        if ((sum % 33) == expectedPasswordPartModulos[3]) {
+                                                            for (int p9 = 0; p9 < 10; p9++) {
+                                                                startIndex = 16;
+                                                                prefilledTables[table][19] = (byte) p9;
+                                                                sum = prefilledTables[table][startIndex++];
+                                                                sum <<= 4;
+                                                                sum += prefilledTables[table][startIndex++];
+                                                                sum <<= 4;
+                                                                sum += prefilledTables[table][startIndex++];
+                                                                sum <<= 4;
+                                                                sum += prefilledTables[table][startIndex];
+                                                                if ((sum % 33) == expectedPasswordPartModulos[4]) {
+                                                                    for (int p12 = 0; p12 < 10; p12++) {
+                                                                        for (int p13 = 0; p13 < 10; p13++) {
+                                                                            startIndex = 20;
+                                                                            prefilledTables[table][21] = (byte) p12;
+                                                                            prefilledTables[table][22] = (byte) p13;
+                                                                            sum = prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex++];
+                                                                            sum <<= 4;
+                                                                            sum += prefilledTables[table][startIndex];
+                                                                            //Found a possible correct table, matching the password and filled in
+                                                                            //with valid store and store management numbers! Still need to check if the LUT index is still valid though!
+                                                                            if ((sum % 33) == expectedPasswordPartModulos[5] && determineLUT(NULL_LOGGER, tableToHex(prefilledTables[table])) == table) {
+                                                                                logger.logString(String.format("[shuffle-table=%d][mac-address=%s]%s[password=%s]", table + 1, mac, extractStoreAndStoreManagement(table, prefilledTables[table]), password));
+                                                                                currentCountPasswords++;
+                                                                                if (currentCountPasswords >= maxPasswords) {
+                                                                                    return maxPasswords;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return currentCountPasswords;
+    }
+
+    private static String tableToHex(final byte[] table) {
+        final StringBuffer tableBuffer = new StringBuffer();
+        for (int x = 0; x < table.length; x++) {
+            tableBuffer.append(String.format("%X", table[x]));
+        }
+        return tableBuffer.toString();
+    }
+
+    private static String extractStoreAndStoreManagement(int tableIndex, final byte[] table) {
+        byte store[] = new byte[6];
+        byte storeManagement[] = new byte[6];
+        for (int x = 0; x < SHUFFLE_LUT[tableIndex].length; x++) {
+            int idx = SHUFFLE_LUT[tableIndex][x] - 1;
+            if (idx <= 17 && idx >= 12) {
+                store[idx - 12] = table[x];
+            }
+            if (idx <= 23 && idx >= 18) {
+                storeManagement[idx - 18] = table[x];
+            }
+        }
+        final StringBuffer storeString = new StringBuffer();
+        final StringBuffer storeManagementString = new StringBuffer();
+        for (int x = 0; x < 6; x++) {
+            storeString.append(Integer.toString(store[x], 16));
+            storeManagementString.append(Integer.toString(storeManagement[x], 16));
+        }
+        return String.format("[store=%s][store management=%s]", storeString, storeManagementString);
     }
 }

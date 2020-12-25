@@ -15,7 +15,7 @@ public class ECDPPasswordGenerator {
 
     public static void main(String[] args) {
         final JFrame frame = new JFrame();
-
+        ILogger logger = System.out::println;
         try {
             frame.setIconImage(Toolkit.getDefaultToolkit().getImage(ECDPPasswordGenerator.class.getResource("/icon.png")));
         } catch (Exception ex) {
@@ -40,10 +40,15 @@ public class ECDPPasswordGenerator {
         final Font fontLabel = new Font(Font.MONOSPACED, Font.BOLD, 16);
         MaskFormatter macFormatter = null;
         MaskFormatter codeFormatter = null;
+        MaskFormatter passwordFormatter = null;
         try {
             macFormatter = new MaskFormatter("AA-AA-AA-AA-AA-AA");
             macFormatter.setPlaceholder("00-00-00-00-00-00");
             macFormatter.setValidCharacters("0123456789abcdefABCDEF");
+
+            passwordFormatter = new MaskFormatter("AAAAAA");
+            passwordFormatter.setPlaceholder("");
+            passwordFormatter.setValidCharacters(ECDP.PASSWORD_ALPHABET + ECDP.PASSWORD_ALPHABET.toLowerCase());
 
             codeFormatter = new MaskFormatter("######");
             codeFormatter.setPlaceholder("000000");
@@ -80,12 +85,12 @@ public class ECDPPasswordGenerator {
         txtStoreManagerNumber.setForeground(Color.yellow);
         txtStoreManagerNumber.setCaretColor(Color.white);
 
-        final JFormattedTextField txtPassword = new JFormattedTextField();
+        final JFormattedTextField txtPassword = new JFormattedTextField(passwordFormatter);
         final JLabel lblPassword = new JLabel("Your password: ", JLabel.RIGHT);
         lblPassword.setFont(fontLabel);
         lblPassword.setToolTipText("Your generated password/serial code");
+        txtPassword.setToolTipText(lblPassword.getToolTipText());
 
-        txtPassword.setEditable(false);
         txtPassword.setFont(font);
         txtPassword.setBackground(Color.black);
         txtPassword.setForeground(Color.green);
@@ -93,12 +98,21 @@ public class ECDPPasswordGenerator {
 
         final JButton btnGenerate = new JButton("Generate password");
         btnGenerate.setMnemonic('G');
-        btnGenerate.setToolTipText("Password would be invalid when both Store and Store Management Number are 000000");
+        btnGenerate.setToolTipText("Password would be invalid when Store Management Number is 000000");
         btnGenerate.setEnabled(false);
 
+        final JButton btnReverse = new JButton("Reverse from password");
+        btnReverse.setMnemonic('R');
+        btnReverse.setToolTipText("Calculate the Store and Store Management Numbers based on the MAC address and given password (password must be entered!)");
+        btnReverse.setEnabled(false);
+
         final JButton btnGenerateMultiple = new JButton("Generate passwords");
-        btnGenerateMultiple.setMnemonic('R');
+        btnGenerateMultiple.setMnemonic('P');
         btnGenerateMultiple.setToolTipText("Generate multiple passwords");
+
+        final JButton btnShowMaster = new JButton("Show masterpassword");
+        btnShowMaster.setMnemonic('M');
+        btnShowMaster.setToolTipText("Show the master password that works with any Store, Store Manager and MAC address combination");
 
         final JCheckBox chkRandomStore = new JCheckBox("Random store numbers");
         final JCheckBox chkRandomManagement = new JCheckBox("Random management numbers");
@@ -106,18 +120,20 @@ public class ECDPPasswordGenerator {
         final SpinnerNumberModel model = new SpinnerNumberModel(10, 1, 1000, 10);
         spinCountPasswords.setModel(model);
         final JLabel lblSpinner = new JLabel("Number of passwords: ");
+        lblSpinner.setToolTipText("Set number of passwords to generate, or maximum number of passwords to reverse");
+        spinCountPasswords.setToolTipText(lblSpinner.getToolTipText());
         final JPanel pnlSpinner = new JPanel();
         pnlSpinner.add(lblSpinner);
         pnlSpinner.add(spinCountPasswords);
 
         final JPanel pnlGenerator = new JPanel(new BorderLayout());
+        pnlGenerator.setBorder(BorderFactory.createLoweredBevelBorder());
         final JPanel pnlCheckBox = new JPanel(new GridLayout(3, 1));
+        pnlCheckBox.add(pnlSpinner);
         pnlCheckBox.add(chkRandomStore);
         pnlCheckBox.add(chkRandomManagement);
-        pnlCheckBox.add(pnlSpinner);
-        pnlGenerator.add(btnGenerateMultiple, BorderLayout.NORTH);
-        pnlGenerator.add(pnlCheckBox, BorderLayout.WEST);
-
+        pnlGenerator.add(btnGenerateMultiple, BorderLayout.CENTER);
+        pnlGenerator.add(pnlCheckBox, BorderLayout.EAST);
 
         final JPanel pnlFields = new JPanel(new GridLayout(4, 2, 0, 0));
         pnlFields.add(lblMac);
@@ -135,7 +151,14 @@ public class ECDPPasswordGenerator {
         pnlMain.add(pnlFields, BorderLayout.NORTH);
 
         final JPanel pnlButton = new JPanel();
+        pnlButton.add(btnShowMaster);
         pnlButton.add(btnGenerate);
+        pnlButton.add(btnReverse);
+
+        final JCheckBox chkLimitReverse = new JCheckBox("Limit result");
+        chkLimitReverse.setToolTipText("Limit the number of combinations to be found to the number given at the 'Number of passwords' selection");
+        pnlButton.add(chkLimitReverse);
+
         final JPanel pnlButtons = new JPanel(new BorderLayout());
 
         pnlButtons.add(pnlButton, BorderLayout.EAST);
@@ -145,7 +168,7 @@ public class ECDPPasswordGenerator {
         pnlMain.add(pnlButtons, BorderLayout.CENTER);
 
         final JTextArea txtLogging = new JTextArea("", 16, 64);
-        txtLogging.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 8));
+        txtLogging.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
         txtLogging.setBackground(Color.black);
         txtLogging.setCaretColor(Color.YELLOW);
         txtLogging.setForeground(Color.LIGHT_GRAY);
@@ -166,21 +189,37 @@ public class ECDPPasswordGenerator {
                 final String mac = txtMacAddress.getText().replaceAll("-", "");
                 final String store = txtStoreNumber.getText();
                 final String storeManagement = txtStoreManagerNumber.getText();
-                if (store.equals("000000") && storeManagement.equals("000000")) {
+                if (storeManagement.equals("000000")) {
                     txtPassword.setText("");
                 } else {
                     String password = ECDP.generatePassword(logger, mac, store, storeManagement);
                     txtPassword.setText(password);
                 }
+                txtMacAddress.setText(txtMacAddress.getText().toUpperCase());
             } catch (IllegalArgumentException ie) {
-                JOptionPane.showMessageDialog(frame, ie.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(frame, ie.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
             }
+        });
+
+        btnReverse.addActionListener(e -> {
+            txtLogging.setText("");
+            final String mac = txtMacAddress.getText().replaceAll("-", "");
+            final String password = txtPassword.getText().toUpperCase();
+            txtPassword.setText(password);
+            long numPasswords = ECDP.reverseFromPassword(logger, mac, password, (chkLimitReverse.isSelected() ? (Integer) spinCountPasswords.getValue() : 1000000000000L), 0);
+            if (numPasswords == 0) {
+                JOptionPane.showMessageDialog(frame, "No valid Store and Store Management number combination found for the given MAC and password combination!", "NO VALID COMBINATIONS FOUND", JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(frame, "Found " + numPasswords + " valid Store and Store Management number combinations for the given MAC address and password" + (chkLimitReverse.isSelected() ? "\n\nLimited results to " + (Integer) spinCountPasswords.getValue() + " combinations" : ""), numPasswords + " combinations found", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        btnShowMaster.addActionListener(e -> {
+            JOptionPane.showMessageDialog(frame, "The following password/code works with any MAC address,\nStore and Store Management number combination:\n\n" + ECDP.MASTER_PASSWORD, "The master password: " + ECDP.MASTER_PASSWORD, JOptionPane.INFORMATION_MESSAGE);
         });
 
         btnGenerateMultiple.addActionListener(e -> {
             txtLogging.setText("");
-            final ILogger nullLogger = data -> {
-            };
             for (int i = 0; i < (Integer) spinCountPasswords.getValue(); i++) {
                 int storeNumber = i;
                 int storeManagementNumber = i;
@@ -192,14 +231,15 @@ public class ECDPPasswordGenerator {
                 }
                 storeNumber %= MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1;
                 storeManagementNumber %= MAX_STORE_NUMBER_FOR_RANDOM_PLUS_1;
-                if (storeNumber == 0 && storeManagementNumber == 0) {
-                    storeNumber++;
+                //Store management number may not be 0 (eCDP does not accept that)
+                if (storeManagementNumber == 0) {
+                    storeManagementNumber++;
                 }
                 final String mac = txtMacAddress.getText().replaceAll("-", "");
 
                 final String txtStore = String.format("%06d", storeNumber);
                 final String txtStoreManagement = String.format("%06d", storeManagementNumber);
-                final String password = ECDP.generatePassword(nullLogger, mac, txtStore, txtStoreManagement);
+                final String password = ECDP.generatePassword(ECDP.NULL_LOGGER, mac, txtStore, txtStoreManagement);
                 txtLogging.append(String.format("[mac-address=%s][store=%s][store management=%s][password=%s]\n", mac, txtStore, txtStoreManagement, password));
             }
         });
@@ -237,6 +277,24 @@ public class ECDPPasswordGenerator {
             @Override
             public void focusGained(FocusEvent e) {
                 setGenerateButtonState(btnGenerate, txtStoreNumber, txtStoreManagerNumber);
+            }
+        });
+
+        txtPassword.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                btnReverse.setEnabled(txtPassword.getText().trim().length() == 6);
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                btnReverse.setEnabled(txtPassword.getText().trim().length() == 6);
+            }
+        });
+        txtPassword.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent ke) {
+                btnReverse.setEnabled(txtPassword.getText().trim().length() == 6);
             }
         });
     }

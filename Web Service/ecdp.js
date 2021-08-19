@@ -240,6 +240,10 @@ function numbersOnly(elem)
 {
 	elem.value = elem.value.replace(/[^0-9]/g, '');	
 }
+function clickjack()
+{
+	playAudio.play();
+}
 function detectChanges(index)
 {
 	var elem = dsiMacs[index];

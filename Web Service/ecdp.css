@@ -1,8 +1,6 @@
 body{
 	background-color: black;
-	background-image:
-    linear-gradient(to bottom, rgba(255, 0, 0, 0.70), rgba(0, 0, 0, 0.70)),
-    url('bg.gif');
+	background-image: linear-gradient(to bottom, rgba(255, 0, 0, 0.70), rgba(0, 0, 0, 0.70)),url('bg.gif');
 	background-repeat: repeat;
     text-align:center;
 }
@@ -17,7 +15,9 @@ body{
 	background-image: linear-gradient(#00e000, green);
 	color: white;
 	border-radius: 5px;
+	animation: scroll 50s infinite linear;
 }
+
 .macAddr{
 	width: 60px;
 	padding: 12px 20px;
@@ -33,6 +33,7 @@ body{
 	padding:12px;
 	border-radius: 4px;
 	background-image: linear-gradient(yellow, #ad9f02);
+	color: black;
 }
 .dice{
 	width: 40px;

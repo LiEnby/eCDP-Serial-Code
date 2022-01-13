@@ -74,7 +74,7 @@ int find_multiplier(char* system_in)
         characters[0] = c;
 
         char* a2b = strstr(hex_values_ptr, characters);
-        next_var = a2b - (uintptr_t)hex_values_ptr;
+        next_var = (uintptr_t)a2b - (uintptr_t)hex_values_ptr;
         if (!a2b)
             next_var = 0;
         total_iterations += next_var;
@@ -141,17 +141,18 @@ unsigned int hex_to_bytes(char* input, int iterator)
             final_char = (char*)0x0;
         }
         i = i + 1;
-        result = result + ((int)final_char << (ii & 0xff));
+        result = result + ((uintptr_t)final_char << (ii & 0xff));
         ii = ii - 4 & 0xffff;
         current_char = current_char + 1;
     } while (i < 4);
     return result & 0xffff;
 }
 
-void generate_password(unsigned short* input, char* output)
+void generate_password(unsigned char* inbuf, char* output)
 {
     int i;
     i = 0;
+    unsigned short* input = (unsigned short*) inbuf;
     do {
         output[i] = password_chars[input[i] - 1];
         i = i + 1;
@@ -160,27 +161,51 @@ void generate_password(unsigned short* input, char* output)
     return;
 }
 
+int decode(char* encoded, char* outbuf){
+    int iterator = 0;
+    int i = 0;
+    int ii = 0;
+
+    memset(outbuf, 0x00, 12);
+    unsigned short* decoded = (unsigned short*) outbuf;
+    do {
+        int chr = hex_to_bytes(encoded, iterator);
+        i = ii + 1;
+        decoded[ii] = (unsigned short)chr;
+        iterator = iterator + 4;
+        ii = i;
+    } while (i < 6);
+
+    i = 0; 
+    ii = 0;
+    do
+    {
+        i = ii;
+        int chr = decoded[ii++];
+        decoded[i] = chr % 33 + 1;
+    } while (ii < 6);
+    
+    return 0;
+}
+
 
 int main(int argc, char* argv[])
 {
     char maccas_id[64];
     char mannager_id[64];
     char mac_address[64];
-    char formatted[64];
+    char formatted[190];
     char encoded[64];
     char final_key[100];
     char total_output [64];
-    int iterator = 0;
-    int i = 0;
-    int ii = 0;
-
+    char decoded[12];
+    
     printf("eCDP Serial Number Generator\n");
     printf("Credits: SilicaAndPina (Reversing, writing code), Rufis_ (ARM asm help)\n");
     printf("-- A backdoor on the worlds rarest DS game.\n");
     
-
     entry:
-    
+  
     memset(mac_address, 0x00, 64);
     memset(maccas_id, 0x00, 64);
     memset(mannager_id, 0x00, 64);
@@ -213,47 +238,16 @@ int main(int argc, char* argv[])
         goto entry;
 
     run:
-    snprintf(formatted, 64, "%s%s%s", mac_address, maccas_id, mannager_id);
+    snprintf(formatted, 190, "%s%s%s", mac_address, maccas_id, mannager_id);
     printf("Formatted Data: %s\n", formatted);
     int multiplier = find_multiplier(formatted);
     printf("Multiplier: %x\n", multiplier);
     substitute(formatted, encoded, multiplier);
     printf("Encoded Data: %s\n", encoded);
-    unsigned short password_values[6];
-    memset(password_values, 0x00, 6 * 2);
-
-    do {
-        int chr = hex_to_bytes(encoded, iterator);
-        i = ii + 1;
-        password_values[ii] = (unsigned short)chr;
-        iterator = iterator + 4;
-        ii = i;
-    } while (i < 6);
-
-    printf("Password Values 1: ");
-    for (int i = 0; i < 6; i++)
-    {
-        printf("%x ", password_values[i]);
-    }
-    printf("\n");
-    i = 0; 
-    ii = 0;
-    do
-    {
-        i = ii;
-        int chr = password_values[ii++];
-        password_values[i] = chr % 33 + 1;
-    } while (ii < 6);
-    printf("Password Values 2: ");
-    for (int i = 0; i < 6; i++)
-    {
-        printf("%x ", password_values[i]);
-    }
-    printf("\n");
-    generate_password(password_values, final_key);
+    decode(encoded, decoded); 
+    printf("Decoded: %s\n", decoded);
+    generate_password(decoded, final_key);
     printf("Ronald McDonald Says your password is %s", final_key);
 
 
-    printf("\n\nThou hast been reversed!\n");
-    getchar();
 }

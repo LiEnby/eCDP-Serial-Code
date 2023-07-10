@@ -167,7 +167,7 @@ void init_menus(){
 	memset(MacAddress, 0, sizeof(MacAddress));
 	memset(OutputCode, 0, sizeof(OutputCode));
 	
-	state = INPUT_MGR_NO;
+	state = INPUT_MAC_ADDRESS;
 	
 	clear_data(StoreNo, 6);
 	clear_data(SerialNo, 6);
@@ -179,15 +179,14 @@ void process_enter_mgr_no(){
 }
 
 void process_enter_serial_no(){
-	handle_number_picker(SerialNo, INPUT_MAC_ADDRESS);
+	handle_number_picker(SerialNo, OUTPUT_CODE);
+
 }
 
 void process_enter_mac_address(){
-	handle_mac_picker(MacAddress, OUTPUT_CODE);
+	handle_mac_picker(MacAddress, INPUT_MGR_NO);
 	
-	if(state == OUTPUT_CODE) {
-		ecdp_keygen(MacAddress, StoreNo, SerialNo, OutputCode, sizeof(OutputCode));
-	}
+
 }
 
 void process_output_code(){
@@ -269,5 +268,9 @@ void process_menu() {
 		case OUTPUT_CODE:
 			process_output_code();
 			break;
+	}
+	
+	if(state == OUTPUT_CODE) {
+		ecdp_keygen(MacAddress, StoreNo, SerialNo, OutputCode, sizeof(OutputCode));
 	}
 }
